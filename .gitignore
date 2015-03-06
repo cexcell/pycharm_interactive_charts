@@ -57,3 +57,9 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+# Idea Plugin Module
+.idea/workspace.xml
+.idea/tasks.xml
+*.iws
+.idea/libraries
