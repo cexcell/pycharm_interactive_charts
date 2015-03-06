@@ -37,7 +37,14 @@
   </project-components>
 
   <actions>
-    <!-- Add your actions here -->
+      <group id="MyPlugin.SampleMenu" text="_Sample Menu" description="Sample menu">
+          <add-to-group group-id="MainMenu" anchor="last"  />
+          <action id="pycharm_interactive_charts.TextBoxes" class="TextBoxes" text="Text _Boxes" description="A test menu item" />
+          <action id="pycharm_interactive_charts.Dialogs" class="MyShowDialog" text="Show _Dialog">
+              <add-to-group group-id="MainMenu" anchor="first"/>
+              <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt M"/>
+          </action>
+      </group>
   </actions>
 
 </idea-plugin>
