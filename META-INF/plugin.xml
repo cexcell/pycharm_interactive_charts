@@ -25,7 +25,10 @@
   -->
 
   <extensions defaultExtensionNs="com.intellij">
-    <!-- Add your extensions here -->
+    <toolWindow id="Charts"
+                anchor="right"
+                factoryClass="ru.spbau.lazarevich.pycharmInteractiveCharts.toolWindow.CacheChartsToolWindowFactory">
+    </toolWindow>
   </extensions>
 
   <application-components>
@@ -39,8 +42,11 @@
   <actions>
       <group id="MyPlugin.SampleMenu" text="_Sample Menu" description="Sample menu">
           <add-to-group group-id="MainMenu" anchor="last"  />
-          <action id="pycharm_interactive_charts.TextBoxes" class="TextBoxes" text="Text _Boxes" description="A test menu item" />
-          <action id="pycharm_interactive_charts.Dialogs" class="MyShowDialog" text="Show _Dialog">
+          <action id="pycharm_interactive_charts.ru.spbau.lazarevich.pycharmInteractiveCharts.TextBoxes"
+                  class="ru.spbau.lazarevich.pycharmInteractiveCharts.TextBoxes" text="Text _Boxes"
+                  description="A test menu item" />
+          <action id="pycharm_interactive_charts.Dialogs"
+                  class="ru.spbau.lazarevich.pycharmInteractiveCharts.MyShowDialog" text="Show _Dialog">
               <add-to-group group-id="MainMenu" anchor="first"/>
               <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt M"/>
           </action>
