@@ -21,6 +21,7 @@ import java.io.IOException;
  */
 
 public class CacheChartsToolWindowFactory implements ToolWindowFactory {
+    //TODO: add my to private fields
     private JButton previousImageButton;
     private JButton nextImageButton;
     private JButton clearImageButton;
@@ -62,19 +63,13 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
         drawImage(false);
     }
 
-    /*Очень очень очень плохая затея бегать по индексам! C++ отпусти!*/
     private void drawImage(boolean next) {
         if (imageFiles.length == 0) {
             return;
         }
         BufferedImage currentChart = null;
         try {
-            if (currentImageIndex >= imageFiles.length) {
-                currentImageIndex = 0;
-            }
-            if (currentImageIndex < 0) {
-                currentImageIndex = imageFiles.length - 1;
-            }
+            checkFileListBoundaries();
             if (next) {
                 currentChart = ImageIO.read(new File(imageFiles[currentImageIndex].getPath()));
                 currentImageIndex++;
@@ -90,6 +85,15 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
         }
     }
 
+    private void checkFileListBoundaries() {
+        if (currentImageIndex >= imageFiles.length) {
+            currentImageIndex = 0;
+        }
+        if (currentImageIndex < 0) {
+            currentImageIndex = imageFiles.length - 1;
+        }
+    }
+
     private void clearImage() {
         chartLabel.setIcon(null);
     }
@@ -99,7 +103,7 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
         cacheChartsToolWindow = toolWindow;
         this.initializeDirectory(project);
         this.drawNextImage();
-        ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
+        final ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
         Content content = contentFactory.createContent(cacheChartsToolWindowContent, "", false);
         toolWindow.getContentManager().addContent(content);
     }
