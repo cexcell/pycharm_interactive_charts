@@ -15,13 +15,13 @@ import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.ResourceBundle;
 
 /**
  * Created by Andrey
  */
 
 public class CacheChartsToolWindowFactory implements ToolWindowFactory {
-  //TODO: add my to private fields
   private JButton myPreviousImageButton;
   private JButton myNextImageButton;
   private JButton myClearImageButton;
@@ -32,6 +32,9 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
   private VirtualFile myChartsDirectory;
   private VirtualFile[] myVirtualFiles;
   private int myCurrentImageIndex;
+
+  private static final ResourceBundle myResourceBundle = ResourceBundle.getBundle("cache_charts.properties");
+  private static String imageDir = myResourceBundle.getString("imageDir");
 
   public CacheChartsToolWindowFactory() {
     myCurrentImageIndex = 0;
@@ -71,20 +74,30 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     try {
       checkFileListBoundaries();
       if (next) {
-        currentChart = ImageIO.read(new File(myVirtualFiles[myCurrentImageIndex].getPath()));
-        myCurrentImageIndex++;
+        currentChart = getNextImage();
       }
       else {
-        currentChart = ImageIO.read(new File(myVirtualFiles[myCurrentImageIndex].getPath()));
-        myCurrentImageIndex--;
+        currentChart = getPrevImage();
       }
     }
     catch (IOException e) {
-      System.err.println("Cannot read from charts directory: " + e.getMessage());
+      System.err.println(myResourceBundle.getString("missingDirectoryExceptionMessage") + e.getMessage());
     }
     if (currentChart != null) {
       myChartLabel.setIcon(new ImageIcon(currentChart));
     }
+  }
+
+  private BufferedImage getPrevImage() throws IOException {
+    BufferedImage currentChart = ImageIO.read(new File(myVirtualFiles[myCurrentImageIndex].getPath()));
+    myCurrentImageIndex--;
+    return currentChart;
+  }
+
+  private BufferedImage getNextImage() throws IOException {
+    BufferedImage currentChart = ImageIO.read(new File(myVirtualFiles[myCurrentImageIndex].getPath()));
+    myCurrentImageIndex++;
+    return currentChart;
   }
 
   private void checkFileListBoundaries() {
@@ -112,12 +125,12 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
 
   private void initializeDirectory(@NotNull Project project) {
     VirtualFile baseDir = project.getBaseDir();
-    if ((myChartsDirectory = baseDir.findChild(".charts")) == null) {
+    if ((myChartsDirectory = baseDir.findChild(imageDir)) == null) {
       try {
-        myChartsDirectory = baseDir.createChildDirectory(this, ".charts");
+        myChartsDirectory = baseDir.createChildDirectory(this, imageDir);
       }
       catch (IOException e) {
-        System.err.println("IO error occurred during directory initialization: " + e.getMessage());
+        System.err.println(myResourceBundle.getString("readingErrorFromDirectoryExceptionMessage") + e.getMessage());
       }
     }
     myVirtualFiles = myChartsDirectory.getChildren();
