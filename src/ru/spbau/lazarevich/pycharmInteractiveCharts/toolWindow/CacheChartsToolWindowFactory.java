@@ -21,102 +21,105 @@ import java.io.IOException;
  */
 
 public class CacheChartsToolWindowFactory implements ToolWindowFactory {
-    //TODO: add my to private fields
-    private JButton previousImageButton;
-    private JButton nextImageButton;
-    private JButton clearImageButton;
-    private JPanel cacheChartsToolWindowContent;
-    private JPanel chartViewer;
-    private JLabel chartLabel;
-    private ToolWindow cacheChartsToolWindow;
-    private VirtualFile chartsDirectory;
-    private VirtualFile[] imageFiles;
-    private int currentImageIndex;
+  //TODO: add my to private fields
+  private JButton myPreviousImageButton;
+  private JButton myNextImageButton;
+  private JButton myClearImageButton;
+  private JPanel myCacheChartsToolWindowContent;
+  private JPanel myChartViewer;
+  private JLabel myChartLabel;
+  private ToolWindow myCacheChartsToolWindow;
+  private VirtualFile myChartsDirectory;
+  private VirtualFile[] myVirtualFiles;
+  private int myCurrentImageIndex;
 
-    public CacheChartsToolWindowFactory() {
-        currentImageIndex = 0;
-        nextImageButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                CacheChartsToolWindowFactory.this.drawNextImage();
-            }
-        });
-        clearImageButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                CacheChartsToolWindowFactory.this.clearImage();
-            }
-        });
-        previousImageButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                CacheChartsToolWindowFactory.this.drawPrevImage();
-            }
-        });
-    }
+  public CacheChartsToolWindowFactory() {
+    myCurrentImageIndex = 0;
+    myNextImageButton.addActionListener(new ActionListener() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        CacheChartsToolWindowFactory.this.drawNextImage();
+      }
+    });
+    myClearImageButton.addActionListener(new ActionListener() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        CacheChartsToolWindowFactory.this.clearImage();
+      }
+    });
+    myPreviousImageButton.addActionListener(new ActionListener() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        CacheChartsToolWindowFactory.this.drawPrevImage();
+      }
+    });
+  }
 
-    private void drawNextImage() {
-        drawImage(true);
-    }
+  private void drawNextImage() {
+    drawImage(true);
+  }
 
-    private void drawPrevImage() {
-        drawImage(false);
-    }
+  private void drawPrevImage() {
+    drawImage(false);
+  }
 
-    private void drawImage(boolean next) {
-        if (imageFiles.length == 0) {
-            return;
-        }
-        BufferedImage currentChart = null;
-        try {
-            checkFileListBoundaries();
-            if (next) {
-                currentChart = ImageIO.read(new File(imageFiles[currentImageIndex].getPath()));
-                currentImageIndex++;
-            } else {
-                currentChart = ImageIO.read(new File(imageFiles[currentImageIndex].getPath()));
-                currentImageIndex--;
-            }
-        } catch (IOException e) {
-            System.err.println("Cannot read from charts directory: " + e.getMessage());
-        }
-        if (currentChart != null) {
-            chartLabel.setIcon(new ImageIcon(currentChart));
-        }
+  private void drawImage(boolean next) {
+    if (myVirtualFiles.length == 0) {
+      return;
     }
+    BufferedImage currentChart = null;
+    try {
+      checkFileListBoundaries();
+      if (next) {
+        currentChart = ImageIO.read(new File(myVirtualFiles[myCurrentImageIndex].getPath()));
+        myCurrentImageIndex++;
+      }
+      else {
+        currentChart = ImageIO.read(new File(myVirtualFiles[myCurrentImageIndex].getPath()));
+        myCurrentImageIndex--;
+      }
+    }
+    catch (IOException e) {
+      System.err.println("Cannot read from charts directory: " + e.getMessage());
+    }
+    if (currentChart != null) {
+      myChartLabel.setIcon(new ImageIcon(currentChart));
+    }
+  }
 
-    private void checkFileListBoundaries() {
-        if (currentImageIndex >= imageFiles.length) {
-            currentImageIndex = 0;
-        }
-        if (currentImageIndex < 0) {
-            currentImageIndex = imageFiles.length - 1;
-        }
+  private void checkFileListBoundaries() {
+    if (myCurrentImageIndex >= myVirtualFiles.length) {
+      myCurrentImageIndex = 0;
     }
+    if (myCurrentImageIndex < 0) {
+      myCurrentImageIndex = myVirtualFiles.length - 1;
+    }
+  }
 
-    private void clearImage() {
-        chartLabel.setIcon(null);
-    }
+  private void clearImage() {
+    myChartLabel.setIcon(null);
+  }
 
-    @Override
-    public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
-        cacheChartsToolWindow = toolWindow;
-        this.initializeDirectory(project);
-        this.drawNextImage();
-        final ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
-        Content content = contentFactory.createContent(cacheChartsToolWindowContent, "", false);
-        toolWindow.getContentManager().addContent(content);
-    }
+  @Override
+  public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
+    myCacheChartsToolWindow = toolWindow;
+    this.initializeDirectory(project);
+    this.drawNextImage();
+    final ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
+    Content content = contentFactory.createContent(myCacheChartsToolWindowContent, "", false);
+    toolWindow.getContentManager().addContent(content);
+  }
 
-    private void initializeDirectory(@NotNull Project project) {
-        VirtualFile baseDir = project.getBaseDir();
-        if ((chartsDirectory = baseDir.findChild(".charts")) == null) {
-            try {
-                chartsDirectory = baseDir.createChildDirectory(this, ".charts");
-            } catch (IOException e) {
-                System.err.println("IO error occurred during directory initialization: " + e.getMessage());
-            }
-        }
-        imageFiles = chartsDirectory.getChildren();
+  private void initializeDirectory(@NotNull Project project) {
+    VirtualFile baseDir = project.getBaseDir();
+    if ((myChartsDirectory = baseDir.findChild(".charts")) == null) {
+      try {
+        myChartsDirectory = baseDir.createChildDirectory(this, ".charts");
+      }
+      catch (IOException e) {
+        System.err.println("IO error occurred during directory initialization: " + e.getMessage());
+      }
     }
+    myVirtualFiles = myChartsDirectory.getChildren();
+  }
 }
