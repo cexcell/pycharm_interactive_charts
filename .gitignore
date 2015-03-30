@@ -59,8 +59,8 @@ $RECYCLE.BIN/
 *.lnk
 
 # Idea Plugin Module
-.idea/workspace.xml
-.idea/tasks.xml
+idea_plugin/.idea/workspace.xml
+idea_plugin/.idea/tasks.xml
 *.iws
-.idea/libraries
-.idea/dictionaries
+idea_plugin/.idea/libraries
+idea_plugin/.idea/dictionaries
