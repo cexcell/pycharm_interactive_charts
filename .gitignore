@@ -58,6 +58,9 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# Python compiled files
+*.pyc
+
 # Idea Plugin Module
 idea_plugin/.idea/workspace.xml
 idea_plugin/.idea/tasks.xml

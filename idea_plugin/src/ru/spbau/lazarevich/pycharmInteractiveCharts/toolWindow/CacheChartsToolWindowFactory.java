@@ -1,7 +1,7 @@
 package ru.spbau.lazarevich.pycharmInteractiveCharts.toolWindow;
 
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.vfs.*;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.ui.content.Content;
@@ -15,6 +15,9 @@ import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.*;
+
+import static java.nio.file.StandardWatchEventKinds.*;
 
 /**
  * Created by Andrey
@@ -31,6 +34,7 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
   private VirtualFile myChartsDirectory;
   private VirtualFile[] myCharts;
   private int myCurrentImageIndex;
+
 
   public static final String ideaPath = ".idea";
   private static final String imageDir= "charts";
@@ -68,7 +72,7 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
   }
 
   private void drawImage(boolean next) {
-    if (myCharts == null || myCharts.length == 0) {
+    if (isEmptyChartDir()) {
       return;
     }
     BufferedImage currentChart = null;
@@ -118,6 +122,7 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
   public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
     myCacheChartsToolWindow = toolWindow;
     this.initializeDirectory(project);
+    this.initializeChartFiles();
     this.drawNextImage();
     final ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
     Content content = contentFactory.createContent(myCacheChartsToolWindowContent, "", false);
@@ -137,11 +142,76 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
         System.err.println(readingErrorFromDirectoryExceptionMessage + e.getMessage());
       }
     }
-    myChartsDirectory.refresh(true, false, new Runnable() {
+    VirtualFileManager.getInstance().addVirtualFileListener(new VirtualFileListener() {
       @Override
-      public void run() {
-        myCharts = myChartsDirectory.getChildren();
+      public void propertyChanged(@NotNull VirtualFilePropertyEvent event) {
+
+      }
+
+      @Override
+      public void contentsChanged(@NotNull VirtualFileEvent event) {
+        initializeChartFiles();
+      }
+
+      @Override
+      public void fileCreated(@NotNull VirtualFileEvent event) {
+        boolean wasEmpty = isEmptyChartDir();
+        initializeChartFiles();
+        if (wasEmpty) {
+          drawNextImage();
+        }
+      }
+
+      @Override
+      public void fileDeleted(@NotNull VirtualFileEvent event) {
+        initializeChartFiles();
+        if (isEmptyChartDir()) {
+          clearImage();
+        }
+        else {
+          drawNextImage();
+        }
+      }
+
+      @Override
+      public void fileMoved(@NotNull VirtualFileMoveEvent event) {
+        initializeChartFiles();
+        drawNextImage();
+      }
+
+      @Override
+      public void fileCopied(@NotNull VirtualFileCopyEvent event) {
+
+      }
+
+      @Override
+      public void beforePropertyChange(@NotNull VirtualFilePropertyEvent event) {
+
+      }
+
+      @Override
+      public void beforeContentsChange(@NotNull VirtualFileEvent event) {
+
+      }
+
+      @Override
+      public void beforeFileDeletion(@NotNull VirtualFileEvent event) {
+
+      }
+
+      @Override
+      public void beforeFileMovement(@NotNull VirtualFileMoveEvent event) {
+
       }
     });
+  }
+
+  private boolean isEmptyChartDir() {
+    return myCharts == null || myCharts.length == 0;
+  }
+
+  private void initializeChartFiles() {
+    myCurrentImageIndex = 0;
+    myCharts = myChartsDirectory != null ? myChartsDirectory.getChildren() : null;
   }
 }
