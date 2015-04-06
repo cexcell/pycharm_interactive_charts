@@ -2,19 +2,22 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.backend_bases import FigureManagerBase, ShowBase
 from matplotlib._pylab_helpers import Gcf
 from matplotlib.figure import Figure
+from params import NAME_PREFIX, CHART_DIR
 import matplotlib
 import os
-
-
-NAME_PREFIX = ".idea/charts/picharts"
-CHART_DIR = ".idea/charts"
 
 rcParams = matplotlib.rcParams
 verbose = matplotlib.verbose
 
 # Interactive backend for pycharm
-# Now as simple as .... BUT!
+# Now as simple as f... BUT!
 # in the future i'm going to implement more usefull features like redraw after changing parameters
+
+
+supported_widgets = {'x_scale':['slider', 'checker'],
+                     'y_scale': ['slider', 'checker']}
+
+
 
 
 def get_last_chart_idx():
@@ -27,8 +30,20 @@ def draw_if_interactive():
         if figManager is not None:
             figManager.show()
 
+class Show(ShowBase):
+    def __call__(self, **kwargs):
+        managers = Gcf.get_all_fig_managers()
+        if not managers:
+            return
 
-show = ShowBase()
+        for manager in managers:
+            manager.show(**kwargs)
+
+    def mainloop(self):
+        print "In da mainloop"
+
+
+show = Show()
 
 
 def new_figure_manager(num, *args, **kwargs):
@@ -52,9 +67,12 @@ class FigureCanvasInterAgg(FigureCanvasAgg):
     def get_default_filetype(self):
         return 'png'
 
-    def show(self):
-        chart_last_idx = get_last_chart_idx()
-        FigureCanvasAgg.print_png(self, NAME_PREFIX + str(chart_last_idx))
+    def show(self, chart_num):
+        FigureCanvasAgg.print_png(self, NAME_PREFIX + str(chart_num))
+
+
+def get_chart_name():
+    pass
 
 
 class FigureManagerInterAgg(FigureManagerBase):
@@ -64,8 +82,12 @@ class FigureManagerInterAgg(FigureManagerBase):
         self._num = num
         self._shown = False
 
-    def show(self):
-        self.canvas.show()
+    def show(self, **kwargs):
+        chart_last_idx = get_last_chart_idx()
+        # server = SocketServer.TCPServer((HOST, PORT), MyTCPHandler)
+        # server.serve_forever()
+
+        self.canvas.show(chart_last_idx)
         Gcf.destroy(self._num)
 
 

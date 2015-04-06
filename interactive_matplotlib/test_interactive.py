@@ -1,13 +1,12 @@
 import interactive_matplotlib
 import matplotlib
-from matplotlib import pyplot as plt
-print matplotlib.get_backend()
+from matplotlib import pylab as plt
+import numpy as np
 
-plt.plot([0, 1, 2, 3, 4, 5, 6])
+x = np.arange(0, 10, 0.1)
+plt.plot(x, np.sin(x))
+plt.ylim([-2, 2])
 plt.show()
 
-plt.plot([0, 1, 2, 3, 4, 5], [0, 1, 4, 9, 16, 25])
-plt.show()
-
-plt.plot([0, 1, 2, 3, 4, 5, 6], [1, 1, 1, 1, 1, 1, 1])
+plt.plot(x, np.sin(x))
 plt.show()
