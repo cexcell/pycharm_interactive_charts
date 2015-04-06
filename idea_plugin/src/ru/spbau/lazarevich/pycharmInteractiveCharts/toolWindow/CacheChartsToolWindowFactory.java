@@ -1,29 +1,37 @@
 package ru.spbau.lazarevich.pycharmInteractiveCharts.toolWindow;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.*;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
+import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.*;
+import java.awt.event.*;
 import java.awt.image.BufferedImage;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.*;
-
-import static java.nio.file.StandardWatchEventKinds.*;
 
 /**
  * Created by Andrey
  */
 
 public class CacheChartsToolWindowFactory implements ToolWindowFactory {
+  private int chartHeight = 240;
+  private int chartWidth = 320;
+  private static int margin = 10;
+  private static final String ideaPath = ".idea";
+  private static final String imageDir = "charts";
+  private static final String missingDirectoryExceptionMessage = "Cannot read from charts directory";
+  private static final String readingErrorFromDirectoryExceptionMessage = "IO error occurred during directory initialization";
   private JButton myPreviousImageButton;
   private JButton myNextImageButton;
   private JButton myClearImageButton;
@@ -34,12 +42,6 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
   private VirtualFile myChartsDirectory;
   private VirtualFile[] myCharts;
   private int myCurrentImageIndex;
-
-
-  public static final String ideaPath = ".idea";
-  private static final String imageDir= "charts";
-  private static final String missingDirectoryExceptionMessage = "Cannot read from charts directory";
-  private static final String readingErrorFromDirectoryExceptionMessage = "IO error occurred during directory initialization";
 
   public CacheChartsToolWindowFactory() {
     myCurrentImageIndex = 0;
@@ -61,6 +63,66 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
         CacheChartsToolWindowFactory.this.drawPrevImage();
       }
     });
+    myCacheChartsToolWindowContent.addComponentListener(new ComponentListener() {
+      @Override
+      public void componentResized(ComponentEvent event) {
+        CacheChartsToolWindowFactory.this.resizeAndDrawCurrentImage();
+      }
+
+      @Override
+      public void componentMoved(ComponentEvent event) {
+
+      }
+
+      @Override
+      public void componentShown(ComponentEvent event) {
+        CacheChartsToolWindowFactory.this.resizeAndDrawCurrentImage();
+      }
+
+      @Override
+      public void componentHidden(ComponentEvent event) {
+
+      }
+    });
+  }
+
+  private void resizeAndDrawCurrentImage() {
+    recalculateImageScale();
+    drawCurrentImage();
+  }
+
+  private void recalculateImageScale() {
+    int newWidth = myCacheChartsToolWindowContent.getWidth() - 2 * margin;
+    if (newWidth < 320) {
+      return;
+    }
+    chartHeight = newWidth * chartHeight / chartWidth;
+    chartWidth = newWidth;
+  }
+
+  public static BufferedImage resize(BufferedImage img, int newW, int newH) {
+    Image tmp = img.getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
+    BufferedImage dimg = UIUtil.createImage(newW, newH, BufferedImage.TYPE_INT_ARGB);
+
+    Graphics2D g2d = dimg.createGraphics();
+    g2d.drawImage(tmp, 0, 0, null);
+    g2d.dispose();
+
+    return dimg;
+  }
+
+  private void drawCurrentImage() {
+    if (isEmptyChartDir()) {
+      return;
+    }
+    BufferedImage currentChart = null;
+    try {
+      currentChart = getCurrentImage();
+    }
+    catch (IOException e) {
+      System.err.println(missingDirectoryExceptionMessage + e.getMessage());
+    }
+    resizeAndSetImage(currentChart);
   }
 
   private void drawNextImage() {
@@ -77,7 +139,6 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     }
     BufferedImage currentChart = null;
     try {
-      checkFileListBoundaries();
       if (next) {
         currentChart = getNextImage();
       }
@@ -88,20 +149,45 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     catch (IOException e) {
       System.err.println(missingDirectoryExceptionMessage + e.getMessage());
     }
-    if (currentChart != null) {
-      myChartLabel.setIcon(new ImageIcon(currentChart));
+    resizeAndSetImage(currentChart);
+  }
+
+  private void resizeAndSetImage(BufferedImage currentChart) {
+    if (currentChart == null) {
+      return;
     }
+    currentChart = resize(currentChart, chartWidth, chartHeight);
+    myChartLabel.setIcon(new ImageIcon(currentChart));
+  }
+
+  private static class IMAGE_GETTER_FLAGS
+  {
+    public final static int NEXT_IMAGE = 1;
+    public final static int CURRENT_IMAGE = 0;
+    public final static int PREV_IMAGE = -1;
   }
 
   private BufferedImage getPrevImage() throws IOException {
-    BufferedImage currentChart = ImageIO.read(new File(myCharts[myCurrentImageIndex].getPath()));
-    myCurrentImageIndex--;
-    return currentChart;
+    return getImage(IMAGE_GETTER_FLAGS.PREV_IMAGE);
   }
 
   private BufferedImage getNextImage() throws IOException {
+    return getImage(IMAGE_GETTER_FLAGS.NEXT_IMAGE);
+  }
+
+  private BufferedImage getCurrentImage() throws IOException {
+    return getImage(IMAGE_GETTER_FLAGS.CURRENT_IMAGE);
+  }
+
+  private BufferedImage getImage(int flag) throws IOException {
+    switch (flag) {
+      case IMAGE_GETTER_FLAGS.PREV_IMAGE: myCurrentImageIndex--;
+        break;
+      case IMAGE_GETTER_FLAGS.NEXT_IMAGE: myCurrentImageIndex++;
+        break;
+    }
+    checkFileListBoundaries();
     BufferedImage currentChart = ImageIO.read(new File(myCharts[myCurrentImageIndex].getPath()));
-    myCurrentImageIndex++;
     return currentChart;
   }
 
@@ -116,6 +202,19 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
 
   private void clearImage() {
     myChartLabel.setIcon(null);
+    ApplicationManager.getApplication().runWriteAction(new Runnable() {
+      @Override
+      public void run() {
+        for (VirtualFile chart : myCharts) {
+          try {
+            chart.delete(this);
+          }
+          catch (IOException e) {
+            System.err.println("Cannot remove image: " + chart.getName());
+          }
+        }
+      }
+    });
   }
 
   @Override
@@ -123,7 +222,7 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     myCacheChartsToolWindow = toolWindow;
     this.initializeDirectory(project);
     this.initializeChartFiles();
-    this.drawNextImage();
+    this.drawCurrentImage();
     final ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
     Content content = contentFactory.createContent(myCacheChartsToolWindowContent, "", false);
     toolWindow.getContentManager().addContent(content);
@@ -158,7 +257,7 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
         boolean wasEmpty = isEmptyChartDir();
         initializeChartFiles();
         if (wasEmpty) {
-          drawNextImage();
+          drawCurrentImage();
         }
       }
 
@@ -176,7 +275,7 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
       @Override
       public void fileMoved(@NotNull VirtualFileMoveEvent event) {
         initializeChartFiles();
-        drawNextImage();
+        drawCurrentImage();
       }
 
       @Override

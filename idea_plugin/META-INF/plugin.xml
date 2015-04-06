@@ -41,17 +41,7 @@
   </project-components>
 
   <actions>
-      <group id="MyPlugin.SampleMenu" text="_Sample Menu" description="Sample menu">
-          <add-to-group group-id="MainMenu" anchor="last"  />
-          <action id="pycharm_interactive_charts.ru.spbau.lazarevich.pycharmInteractiveCharts.TextBoxes"
-                  class="ru.spbau.lazarevich.pycharmInteractiveCharts.TextBoxes" text="Text _Boxes"
-                  description="A test menu item" />
-          <action id="pycharm_interactive_charts.Dialogs"
-                  class="ru.spbau.lazarevich.pycharmInteractiveCharts.MyShowDialog" text="Show _Dialog">
-              <add-to-group group-id="MainMenu" anchor="first"/>
-              <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt M"/>
-          </action>
-      </group>
+    <!-- Add your actions here -->
   </actions>
 
 </idea-plugin>

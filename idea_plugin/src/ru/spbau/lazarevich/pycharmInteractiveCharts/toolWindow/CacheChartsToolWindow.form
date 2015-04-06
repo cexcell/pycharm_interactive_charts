@@ -13,7 +13,8 @@
           <grid row="0" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
         </constraints>
         <properties>
-          <text value="Next"/>
+          <icon value="next_arrow.png"/>
+          <text value=""/>
         </properties>
       </component>
       <component id="261df" class="javax.swing.JButton" binding="myClearImageButton">
@@ -21,7 +22,8 @@
           <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
         </constraints>
         <properties>
-          <text value="Clear"/>
+          <icon value="clear.png"/>
+          <text value=""/>
         </properties>
       </component>
       <component id="7fba4" class="javax.swing.JButton" binding="myPreviousImageButton">
@@ -29,7 +31,8 @@
           <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
         </constraints>
         <properties>
-          <text value="Previous"/>
+          <icon value="prev_arrow.png"/>
+          <text value=""/>
         </properties>
       </component>
       <grid id="9e012" binding="myChartViewer" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
