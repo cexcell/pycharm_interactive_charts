@@ -68,7 +68,7 @@ class FigureCanvasInterAgg(FigureCanvasAgg):
         return 'png'
 
     def show(self, chart_num):
-        FigureCanvasAgg.print_png(self, NAME_PREFIX + str(chart_num))
+        FigureCanvasAgg.print_png(self, NAME_PREFIX + str(chart_num) + ".png")
 
 
 def get_chart_name():
