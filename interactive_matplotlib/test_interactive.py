@@ -12,10 +12,11 @@ def f(k, b=4):
     plt.plot(x, x ** (k + 1) - b)
     plt.show()
 
-# plt.plot(x, np.sin(x))
-# plt.ylim([-2, 2])
-# plt.show()
-#
-# plt.plot(x, np.sin(x))
-# plt.show()
-interactive(f, k=(1, 3), b=(2, 5, 2))
+plt.plot(x, np.sin(x))
+plt.ylim([-2, 2])
+plt.show()
+
+plt.plot(x, np.sin(x))
+plt.show()
+
+# interactive(f, k=(1, 3), b=(2, 5, 2))
