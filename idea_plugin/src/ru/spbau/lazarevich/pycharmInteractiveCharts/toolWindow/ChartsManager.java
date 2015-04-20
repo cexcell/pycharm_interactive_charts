@@ -4,31 +4,26 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.ui.UIUtil;
 
 import javax.imageio.ImageIO;
-import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
-/**
- * Created by cexcell on 12.04.15.
- */
 public class ChartsManager {
+  private static final int ourMinimumChartWidth = 320;
+  private static final int ourMinimumChartHeight = 240;
   private VirtualFile myChartsDirectory;
   private ArrayList<VirtualFile> myCharts;
   private int myCurrentImageIndex;
-  private final int minimumChartWidth = 320;
-  private final int minimumChartHeight = 240;
-  private int chartWidth = minimumChartWidth;
-  private int chartHeight = minimumChartHeight;
+  private int myChartWidth = ourMinimumChartWidth;
+  private int myChartHeight = ourMinimumChartHeight;
 
   public ChartsManager(VirtualFile ideaDir, String imageDir) throws IOException {
     if ((myChartsDirectory = ideaDir.findChild(imageDir)) == null) {
       myChartsDirectory = ideaDir.createChildDirectory(this, imageDir);
     }
   }
-
 
   public static BufferedImage resize(BufferedImage img, int newW, int newH) {
     Image tmp = img.getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
@@ -39,6 +34,14 @@ public class ChartsManager {
     g2d.dispose();
 
     return dimg;
+  }
+
+  public int getCurrentImageIndex() {
+    return myCurrentImageIndex;
+  }
+
+  public VirtualFile getChartsDirectory() {
+    return myChartsDirectory;
   }
 
   private void checkFileListBoundaries() {
@@ -54,10 +57,10 @@ public class ChartsManager {
     if (isEmptyChartDir()) {
       return null;
     }
-    BufferedImage currentChart = null;
+    BufferedImage currentChart;
     currentChart = getCurrentImage();
     if (rescale && currentChart != null) {
-      currentChart = resize(currentChart, chartWidth, chartHeight);
+      currentChart = resize(currentChart, myChartWidth, myChartHeight);
     }
     return currentChart;
   }
@@ -79,14 +82,8 @@ public class ChartsManager {
     if (isEmptyChartDir()) {
       return null;
     }
-    BufferedImage currentChart = null;
-    if (next) {
-      currentChart = getNextImage();
-    }
-    else {
-      currentChart = getPrevImage();
-    }
-    currentChart = resize(currentChart, chartWidth, chartHeight);
+    BufferedImage currentChart = next ? getNextImage() : getPrevImage();
+    currentChart = resize(currentChart, myChartWidth, myChartHeight);
     return currentChart;
   }
 
@@ -100,11 +97,11 @@ public class ChartsManager {
   }
 
   public void setScale(int newWidth) {
-    if (newWidth < minimumChartWidth) {
+    if (newWidth < ourMinimumChartWidth) {
       return;
     }
-    chartHeight = newWidth * chartHeight / chartWidth;
-    chartWidth = newWidth;
+    myChartHeight = newWidth * myChartHeight / myChartWidth;
+    myChartWidth = newWidth;
   }
 
   //public BufferedImage drawIfEmpty() throws IOException {
@@ -123,12 +120,6 @@ public class ChartsManager {
 
   public BufferedImage redrawCurrentImage() throws IOException {
     return redraw(true);
-  }
-
-  private static class IMAGE_GETTER_FLAGS {
-    public final static int NEXT_IMAGE = 1;
-    public final static int CURRENT_IMAGE = 0;
-    public final static int PREV_IMAGE = -1;
   }
 
   private BufferedImage getPrevImage() throws IOException {
@@ -153,8 +144,7 @@ public class ChartsManager {
         break;
     }
     checkFileListBoundaries();
-    BufferedImage currentChart = ImageIO.read(new File(myCharts.get(myCurrentImageIndex).getPath()));
-    return currentChart;
+    return ImageIO.read(new File(myCharts.get(myCurrentImageIndex).getPath()));
   }
 
   private boolean isEmptyChartDir() {
@@ -165,13 +155,14 @@ public class ChartsManager {
     myCurrentImageIndex = 0;
     if (myChartsDirectory != null) {
       if (myCharts == null) {
-        myCharts = new ArrayList<VirtualFile>();
+        myCharts = new ArrayList<>();
       }
       else {
         myCharts.clear();
       }
       for (VirtualFile file : myChartsDirectory.getChildren()) {
-        if (file.getExtension().equals("png")) {
+        String extension = file.getExtension();
+        if (extension != null && extension.equals("png")) {
           myCharts.add(file);
         }
       }
@@ -179,5 +170,11 @@ public class ChartsManager {
     else {
       myCharts = null;
     }
+  }
+
+  private static class IMAGE_GETTER_FLAGS {
+    public final static int NEXT_IMAGE = 1;
+    public final static int CURRENT_IMAGE = 0;
+    public final static int PREV_IMAGE = -1;
   }
 }

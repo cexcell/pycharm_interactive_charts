@@ -2,7 +2,8 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.backend_bases import FigureManagerBase, ShowBase
 from matplotlib._pylab_helpers import Gcf
 from matplotlib.figure import Figure
-from params import NAME_PREFIX, CHART_DIR
+from params import NAME_PREFIX, CHART_DIR, CHART_EXT
+from utils import check_directory_charts, check_directory_datas
 import matplotlib
 import os
 
@@ -14,12 +15,6 @@ verbose = matplotlib.verbose
 # in the future i'm going to implement more usefull features like redraw after changing parameters
 
 
-supported_widgets = {'x_scale':['slider', 'checker'],
-                     'y_scale': ['slider', 'checker']}
-
-
-
-
 def get_last_chart_idx():
     return len([name for name in os.listdir(CHART_DIR) if os.path.isfile(os.path.join(CHART_DIR, name))])
 
@@ -29,6 +24,7 @@ def draw_if_interactive():
         figManager = Gcf.get_active()
         if figManager is not None:
             figManager.show()
+
 
 class Show(ShowBase):
     def __call__(self, **kwargs):
@@ -68,11 +64,18 @@ class FigureCanvasInterAgg(FigureCanvasAgg):
         return 'png'
 
     def show(self, chart_num):
-        FigureCanvasAgg.print_png(self, NAME_PREFIX + str(chart_num) + ".png")
+        FigureCanvasAgg.print_png(self, NAME_PREFIX + str(chart_num) + CHART_EXT)
 
 
-def get_chart_name():
-    pass
+def get_last_missing_chart_index():
+    datas = check_directory_datas(CHART_DIR)
+    charts = check_directory_charts(CHART_DIR)
+    for i, data in enumerate(datas):
+        fname = data[:-4] + CHART_EXT
+        if fname not in charts:
+            return i
+    return len(charts)
+
 
 
 class FigureManagerInterAgg(FigureManagerBase):
@@ -83,10 +86,7 @@ class FigureManagerInterAgg(FigureManagerBase):
         self._shown = False
 
     def show(self, **kwargs):
-        chart_last_idx = get_last_chart_idx()
-        # server = SocketServer.TCPServer((HOST, PORT), MyTCPHandler)
-        # server.serve_forever()
-
+        chart_last_idx = get_last_missing_chart_index()
         self.canvas.show(chart_last_idx)
         Gcf.destroy(self._num)
 

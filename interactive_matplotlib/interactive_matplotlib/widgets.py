@@ -1,8 +1,9 @@
 __author__ = 'cexcell'
-from tcp_server import add_function
+from tcp_server import add_function, MyTCPServer, MyTCPServerHandler
 from abc import abstractmethod
-from utils import check_charts_directory
-from params import CHART_DIR
+from utils import check_directory_charts
+from params import CHART_DIR, HOST, PORT
+import json
 
 
 class Widget(object):
@@ -14,10 +15,12 @@ class Widget(object):
         return self.value_
 
     @abstractmethod
-    def serialize(self, file):
-        file.write("Widget:")
-        file.write(self.name_ + ",")
-        file.write(str(self.value_) + "\n")
+    def serialize(self):
+        return {"widgetType": "Widget", "name": self.name_, "value": self.value_}
+        # file.write(json.dumps(data))
+        # file.write("Widget:")
+        # file.write(self.name_ + ",")
+        # file.write(str(self.value_) + "\n")
 
 
 class WidgetInt(Widget):
@@ -29,33 +32,42 @@ class WidgetInt(Widget):
             self.step_ = 1
         super(WidgetInt, self).__init__(name, (self.min_ + self.max_) / 2)
 
-    def serialize(self, file):
-        file.write("WidgetInt:")
-        file.write(str(self.name_) + ",")
-        file.write(str(self.min_) + ",")
-        file.write(str(self.max_) + ",")
-        file.write(str(self.step_) + ",")
-        file.write(str(self.value_) + "\n")
+    def serialize(self):
+        return {"widgetType": "WidgetInt", "name": self.name_, "min": self.min_, "max": self.max_, "step": self.step_,
+                "value": self.value_}
+        # file.write(json.dumps(data))
+        # file.write("WidgetInt:")
+        # file.write(str(self.name_) + ",")
+        # file.write(str(self.min_) + ",")
+        # file.write(str(self.max_) + ",")
+        # file.write(str(self.step_) + ",")
+        # file.write(str(self.value_) + "\n")
 
 
 class WidgetText(Widget):
-    def serialize(self, file):
-        file.write("WidgetText:")
-        file.write(self.name_ + ",")
-        file.write(self.value_ + "\n")
+    def serialize(self):
+        return {"widgetType": "WidgetText", "name": self.name_, "value": self.value_}
+        # file.write(json.dumps(data))
+        # file.write("WidgetText:")
+        # file.write(self.name_ + ",")
+        # file.write(self.value_ + "\n")
 
 
 class WidgetBool(Widget):
     def __init__(self, name, val):
         super(WidgetBool, self).__init__(name, val)
 
-    def serialize(self, file):
-        file.write("WidgetBool:")
-        file.write(self.name_ + ",")
-        file.write(str(self.value_) + ",")
+    def serialize(self):
+        return {"widgetType": "WidgetBool", "name": self.name_, "value": self.value_}
+        # file.write(json.dumps(data))
+        # file.write("WidgetBool:")
+        # file.write(self.name_ + ",")
+        # file.write(str(self.value_) + ",")
 
 
 def parse_widget(k, v):
+    if isinstance(v, int):
+        return WidgetInt(k, (0, v + v))
     if isinstance(v, tuple):
         return WidgetInt(k, v)
     if isinstance(v, bool):
@@ -75,10 +87,13 @@ def write_widgets_info(start_id, end_id, widgets):
     connected_image = [i for i in range(start_id, end_id)]
     for i in range(start_id, end_id):
         with open(NAME_PREFIX + str(i) + INFO_EXT, 'w') as output:
-            output.write(str(end_id) + "\n")
-            write_list(connected_image, output)
-            for widget in widgets:
-                widget.serialize(output)
+            data = {"funcId": end_id, "relatedCharts": connected_image, "widgetsNumber": len(widgets)}
+            # output.write(str(end_id) + "\n")
+            # write_list(connected_image, output)
+            # output.write(str(len(widgets)) + "\n")
+            for j, widget in enumerate(widgets):
+                data["widget" + str(j)] = widget.serialize()
+            output.write(json.dumps(data))
 
 
 def interactive(func, **kwargs):
@@ -88,10 +103,15 @@ def interactive(func, **kwargs):
     default_values_dict = {}
     for widget in widgets:
         default_values_dict[widget.name_] = widget.get_value()
-    orig_charts_name_list = check_charts_directory(CHART_DIR)
+    orig_charts_name_list = check_directory_charts(CHART_DIR)
+
+    # first call
     func(**default_values_dict)
-    modified_charts_name_list = check_charts_directory(CHART_DIR)
+
+    modified_charts_name_list = check_directory_charts(CHART_DIR)
     id = len(modified_charts_name_list)
     charts_created = id - len(orig_charts_name_list)
     write_widgets_info(id - charts_created, id, widgets)
     add_function(id, func)
+    server = MyTCPServer((HOST, PORT), MyTCPServerHandler)
+    server.serve_forever()
