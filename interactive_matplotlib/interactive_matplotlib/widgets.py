@@ -66,12 +66,12 @@ class WidgetBool(Widget):
 
 
 def parse_widget(k, v):
-    if isinstance(v, int):
-        return WidgetInt(k, (0, v + v))
     if isinstance(v, tuple):
         return WidgetInt(k, v)
     if isinstance(v, bool):
         return WidgetBool(k, v)
+    if isinstance(v, int):
+        return WidgetInt(k, (0, v + v))
     return WidgetText(k, v)
 
 
@@ -112,6 +112,6 @@ def interactive(func, **kwargs):
     id = len(modified_charts_name_list)
     charts_created = id - len(orig_charts_name_list)
     write_widgets_info(id - charts_created, id, widgets)
-    add_function(id, func)
+    add_function(id, (func, default_values_dict))
     server = MyTCPServer((HOST, PORT), MyTCPServerHandler)
     server.serve_forever()

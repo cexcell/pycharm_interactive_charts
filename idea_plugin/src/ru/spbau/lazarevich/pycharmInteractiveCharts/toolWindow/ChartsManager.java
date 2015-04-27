@@ -66,10 +66,6 @@ public class ChartsManager {
   }
 
 
-  public BufferedImage drawCurrentImage() throws IOException {
-    return redraw(false);
-  }
-
   public BufferedImage drawNext() throws IOException {
     return drawImage(true);
   }
@@ -88,12 +84,7 @@ public class ChartsManager {
   }
 
   public ArrayList<VirtualFile> getCharts() {
-    return new ArrayList<>(myCharts);
-  }
-
-  public void clear() {
-    myCurrentImageIndex = 0;
-    myCharts.clear();
+    return new ArrayList<VirtualFile>(myCharts);
   }
 
   public void setScale(int newWidth) {
@@ -112,11 +103,6 @@ public class ChartsManager {
   //  }
   //  return null;
   //}
-
-  public BufferedImage redrawAfterMoved() throws IOException {
-    initializeChartFiles();
-    return drawCurrentImage();
-  }
 
   public BufferedImage redrawCurrentImage() throws IOException {
     return redraw(true);
@@ -152,10 +138,20 @@ public class ChartsManager {
   }
 
   public void initializeChartFiles() {
-    myCurrentImageIndex = 0;
+    refreshDirectory(true);
+  }
+
+  public void refreshChartFiles() {
+    refreshDirectory(false);
+  }
+
+  private void refreshDirectory(boolean isNewCharts) {
+    if (isNewCharts) {
+      myCurrentImageIndex = 0;
+    }
     if (myChartsDirectory != null) {
       if (myCharts == null) {
-        myCharts = new ArrayList<>();
+        myCharts = new ArrayList<VirtualFile>();
       }
       else {
         myCharts.clear();
@@ -170,6 +166,10 @@ public class ChartsManager {
     else {
       myCharts = null;
     }
+  }
+
+  public boolean isAvailable() {
+    return myCharts.size() != 0;
   }
 
   private static class IMAGE_GETTER_FLAGS {

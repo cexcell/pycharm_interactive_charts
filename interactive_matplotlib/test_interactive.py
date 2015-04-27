@@ -7,9 +7,10 @@ x = np.arange(0, 10, 0.1)
 
 
 def f(k, b=4):
-    plt.plot(x, x ** k + b)
-    plt.show()
-    plt.plot(x, x ** (k + 1) - b)
+    if k:
+        plt.plot(x, x ** b)
+    else:
+        plt.plot(x, np.sin(x) + b)
     plt.show()
 
 # plt.plot(x, np.sin(x))
@@ -19,4 +20,4 @@ def f(k, b=4):
 # plt.plot(x, np.sin(x))
 # plt.show()
 
-interactive(f, k=(1, 3), b=(2, 5, 2))
+interactive(f, k=True, b=(1, 4, 1))

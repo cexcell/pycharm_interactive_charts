@@ -1,5 +1,6 @@
 package ru.spbau.lazarevich.pycharmInteractiveCharts.toolWindow;
 
+import com.google.gson.JsonObject;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
@@ -13,20 +14,23 @@ import com.intellij.ui.content.ContentFactory;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.ComponentEvent;
-import java.awt.event.ComponentListener;
+import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.net.Socket;
 import java.util.ArrayList;
 
 public class CacheChartsToolWindowFactory implements ToolWindowFactory {
   private static final String ourIdeaPath = ProjectCoreUtil.DIRECTORY_BASED_PROJECT_DIR;
   private static final String ourChartsDir = "charts";
-  private static final String ourMissingDirectoryExceptionMessage = "Cannot read from charts directory";
-  private static final String ourReadingErrorFromDirectoryExceptionMessage = "IO error occurred during directory initialization";
+  private static final String ourDatExtension = "dat";
+  private static final String ourChartExtension = "png";
+  private static final String ourMissingDirectoryExceptionMessage = "Cannot read from charts directory: ";
+  private static final String ourReadingErrorFromDirectoryExceptionMessage = "IO error occurred during directory initialization: ";
+  private static final Logger LOG = Logger.getInstance(CacheChartsToolWindowFactory.class.getName());
   private JButton myPreviousImageButton;
   private JButton myNextImageButton;
   private JButton myClearImageButton;
@@ -37,8 +41,6 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
   private ToolWindow myCacheChartsToolWindow;
   private ChartsManager myChartsManager;
   private WidgetManager myWidgetManager;
-  private ArrayList<Component> myWidgets;
-  private static final Logger LOG = Logger.getInstance(CacheChartsToolWindowFactory.class.getName());
 
 
   public CacheChartsToolWindowFactory() {
@@ -88,13 +90,44 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
       new BoxLayout(myWidgetViewer, BoxLayout.Y_AXIS));
   }
 
-  private void renderWidgets(int idx) throws IOException {
+  private void sendWidgetInfo(JsonObject jsonObject) {
+    Socket socket = null;
+    try {
+      int ourPortNumber = 4000;
+      String ourHost = "localhost";
+      socket = new Socket(ourHost, ourPortNumber);
+      socket.getOutputStream().write(jsonObject.toString().getBytes());
+      byte[] buf = new byte[1024];
+      int r = socket.getInputStream().read(buf);
+      String data = new String(buf, 0, r);
+      if (data.equals("OK")) {
+        resizeAndDrawCurrentImage();
+      }
+    }
+    catch (IOException e) {
+      String ourCannotSendJsonExceptionMessage = "Cannot send information to server via socket.";
+      LOG.warn(ourCannotSendJsonExceptionMessage + e.getMessage());
+    }
+    finally {
+      WidgetManager.closeSocket(socket);
+    }
+  }
+
+  private void renderWidgets() throws IOException {
+    if (!myChartsManager.isAvailable()) {
+      return;
+    }
     int verticalMargin = 5;
     myWidgetViewer.removeAll();
-    myWidgets = myWidgetManager.renderWidgets(myChartsManager.getCurrentImageIndex());
-    for (Component widget : myWidgets) {
-      JLabel componentLabel = new JLabel(widget.getName(), JLabel.CENTER);
+    ArrayList<Component> widgets = myWidgetManager.renderWidgets(myChartsManager.getCurrentImageIndex());
+    if (widgets == null) {
+      return;
+    }
+    UIEventListners uiEventListners = new UIEventListners();
+    for (Component widget : widgets) {
+      JLabel componentLabel = new JLabel(widget.getName(), SwingConstants.CENTER);
       myWidgetViewer.add(componentLabel);
+      uiEventListners.setListner(widget);
       myWidgetViewer.add(widget);
       myWidgetViewer.add(Box.createVerticalStrut(verticalMargin));
       myWidgetViewer.revalidate();
@@ -106,7 +139,7 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     recalculateImageScale();
     try {
       setIcon(myChartsManager.redrawCurrentImage());
-      renderWidgets(myChartsManager.getCurrentImageIndex());
+      //renderWidgets();
     }
     catch (IOException e) {
       LOG.warn(ourMissingDirectoryExceptionMessage + e.getMessage());
@@ -128,7 +161,7 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
   private void drawNextImage() {
     try {
       setIcon(myChartsManager.drawNext());
-      renderWidgets(myChartsManager.getCurrentImageIndex());
+      renderWidgets();
     }
     catch (IOException e) {
       LOG.warn(ourMissingDirectoryExceptionMessage + e.getMessage());
@@ -138,24 +171,30 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
   private void drawPrevImage() {
     try {
       setIcon(myChartsManager.drawPrev());
-      renderWidgets(myChartsManager.getCurrentImageIndex());
+      renderWidgets();
     }
     catch (IOException e) {
       LOG.warn(ourMissingDirectoryExceptionMessage + e.getMessage());
     }
   }
 
-
   private void clearImages() {
     myChartLabel.setIcon(null);
     myWidgetManager.clear();
+    myWidgetViewer.removeAll();
     ApplicationManager.getApplication().runWriteAction(new Runnable() {
       @Override
       public void run() {
         ArrayList<VirtualFile> charts = myChartsManager.getCharts();
-        myChartsManager.clear();
         for (VirtualFile chart : charts) {
           try {
+            String associatedDatFileName = chart.getName();
+            associatedDatFileName = associatedDatFileName.substring(0, associatedDatFileName.length() - 3) +
+                                    ourDatExtension;
+            VirtualFile associatedDatFile = myChartsManager.getChartsDirectory().findChild(associatedDatFileName);
+            if (associatedDatFile != null) {
+              associatedDatFile.delete(this);
+            }
             chart.delete(this);
           }
           catch (IOException e) {
@@ -206,9 +245,15 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
       @Override
       public void fileCreated(@NotNull VirtualFileEvent event) {
         try {
-          myChartsManager.initializeChartFiles();
-          setIcon(myChartsManager.redrawCurrentImage());
-          renderWidgets(myChartsManager.getCurrentImageIndex());
+          VirtualFile file = event.getFile();
+          String ext = file.getExtension();
+          if (ext != null && ext.equals(ourChartExtension)) {
+            myChartsManager.refreshChartFiles();
+            setIcon(myChartsManager.redrawCurrentImage());
+          }
+          if (ext != null && ext.equals(ourDatExtension)) {
+            renderWidgets();
+          }
         }
         catch (IOException e) {
           LOG.warn(ourMissingDirectoryExceptionMessage + e.getMessage());
@@ -217,19 +262,15 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
 
       @Override
       public void fileMoved(@NotNull VirtualFileMoveEvent event) {
-        try {
-          setIcon(myChartsManager.redrawAfterMoved());
-          renderWidgets(myChartsManager.getCurrentImageIndex());
-        }
-        catch (IOException e) {
-          LOG.warn(ourMissingDirectoryExceptionMessage + e.getMessage());
-        }
       }
 
       @Override
       public void fileDeleted(@NotNull VirtualFileEvent event) {
-        setIcon(null);
-        myChartsManager.initializeChartFiles();
+        VirtualFile file = event.getFile();
+        String ext = file.getExtension();
+        if (ext != null && ext.equals(ourChartExtension)) {
+          setIcon(null);
+        }
       }
 
       @Override
@@ -252,5 +293,37 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
       public void beforeFileMovement(@NotNull VirtualFileMoveEvent event) {
       }
     });
+  }
+
+  class UIEventListners {
+    public void setListner(Component component) {
+      if (component instanceof JSlider) {
+        JSlider widget = (JSlider)component;
+        widget.addChangeListener(new ChangeListener() {
+          @Override
+          public void stateChanged(ChangeEvent event) {
+            JSlider widget = (JSlider)event.getSource();
+            if (widget.getValueIsAdjusting()) {
+              JsonObject jsonObject = CacheChartsToolWindowFactory.this.myWidgetManager.collectBasicJsonInfo(widget);
+              sendWidgetInfo(jsonObject);
+            }
+          }
+        });
+      }
+      if (component instanceof JCheckBox) {
+        JCheckBox widget = (JCheckBox)component;
+        widget.addItemListener(new ItemListener() {
+          @Override
+          public void itemStateChanged(ItemEvent event) {
+            JCheckBox widget = (JCheckBox)event.getSource();
+            JsonObject jsonObject = CacheChartsToolWindowFactory.this.myWidgetManager.collectBasicJsonInfo(widget);
+            sendWidgetInfo(jsonObject);
+          }
+        });
+      }
+      if (component instanceof JTextArea) {
+        //TODO: implement
+      }
+    }
   }
 }
