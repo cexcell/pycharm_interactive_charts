@@ -65,11 +65,30 @@ class WidgetBool(Widget):
         # file.write(str(self.value_) + ",")
 
 
+class WidgetFloat(Widget):
+    def __init__(self, name, values):
+        if len(values) == 3:
+            self.min_, self.max_, self.step_ = values
+        else:
+            self.min_, self.max_ = values
+            self.step_ = 0.1
+        super(WidgetFloat, self).__init__(name, (self.min_ + self.max_) / 2)
+
+    def serialize(self):
+        return {"widgetType": "WidgetFloat", "name": self.name_, "min": self.min_, "max": self.max_, "step": self.step_,
+                "value": self.value_}
+
+
 def parse_widget(k, v):
     if isinstance(v, tuple):
-        return WidgetInt(k, v)
+        if isinstance(v[0], int):
+            return WidgetInt(k, v)
+        if isinstance(v[0], float):
+            return WidgetFloat(k, v)
     if isinstance(v, bool):
         return WidgetBool(k, v)
+    if isinstance(v, float):
+        return WidgetFloat(k, (0, v + v))
     if isinstance(v, int):
         return WidgetInt(k, (0, v + v))
     return WidgetText(k, v)

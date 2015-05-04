@@ -99,9 +99,11 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
       socket.getOutputStream().write(jsonObject.toString().getBytes());
       byte[] buf = new byte[1024];
       int r = socket.getInputStream().read(buf);
-      String data = new String(buf, 0, r);
-      if (data.equals("OK")) {
-        resizeAndDrawCurrentImage();
+      if (r != -1) {
+        String data = new String(buf, 0, r);
+        if (data.equals("OK")) {
+          resizeAndDrawCurrentImage();
+        }
       }
     }
     catch (IOException e) {
@@ -123,11 +125,10 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     if (widgets == null) {
       return;
     }
-    UIEventListners uiEventListners = new UIEventListners();
     for (Component widget : widgets) {
       JLabel componentLabel = new JLabel(widget.getName(), SwingConstants.CENTER);
       myWidgetViewer.add(componentLabel);
-      uiEventListners.setListner(widget);
+      setListner(widget);
       myWidgetViewer.add(widget);
       myWidgetViewer.add(Box.createVerticalStrut(verticalMargin));
       myWidgetViewer.revalidate();
@@ -295,35 +296,33 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     });
   }
 
-  class UIEventListners {
-    public void setListner(Component component) {
-      if (component instanceof JSlider) {
-        JSlider widget = (JSlider)component;
-        widget.addChangeListener(new ChangeListener() {
-          @Override
-          public void stateChanged(ChangeEvent event) {
-            JSlider widget = (JSlider)event.getSource();
-            if (widget.getValueIsAdjusting()) {
-              JsonObject jsonObject = CacheChartsToolWindowFactory.this.myWidgetManager.collectBasicJsonInfo(widget);
-              sendWidgetInfo(jsonObject);
-            }
-          }
-        });
-      }
-      if (component instanceof JCheckBox) {
-        JCheckBox widget = (JCheckBox)component;
-        widget.addItemListener(new ItemListener() {
-          @Override
-          public void itemStateChanged(ItemEvent event) {
-            JCheckBox widget = (JCheckBox)event.getSource();
+  private void setListner(Component component) {
+    if (component instanceof JSlider) {
+      JSlider widget = (JSlider)component;
+      widget.addChangeListener(new ChangeListener() {
+        @Override
+        public void stateChanged(ChangeEvent event) {
+          JSlider widget = (JSlider)event.getSource();
+          if (widget.getValueIsAdjusting()) {
             JsonObject jsonObject = CacheChartsToolWindowFactory.this.myWidgetManager.collectBasicJsonInfo(widget);
             sendWidgetInfo(jsonObject);
           }
-        });
-      }
-      if (component instanceof JTextArea) {
-        //TODO: implement
-      }
+        }
+      });
+    }
+    if (component instanceof JCheckBox) {
+      JCheckBox widget = (JCheckBox)component;
+      widget.addItemListener(new ItemListener() {
+        @Override
+        public void itemStateChanged(ItemEvent event) {
+          JCheckBox widget = (JCheckBox)event.getSource();
+          JsonObject jsonObject = CacheChartsToolWindowFactory.this.myWidgetManager.collectBasicJsonInfo(widget);
+          sendWidgetInfo(jsonObject);
+        }
+      });
+    }
+    if (component instanceof JTextArea) {
+      //TODO: implement
     }
   }
 }

@@ -6,11 +6,8 @@ import numpy as np
 x = np.arange(0, 10, 0.1)
 
 
-def f(k, b=4):
-    if k:
-        plt.plot(x, x ** b)
-    else:
-        plt.plot(x, np.sin(x) + b)
+def f(b):
+    plt.plot(x, np.sin(b*x))
     plt.show()
 
 # plt.plot(x, np.sin(x))
@@ -20,4 +17,4 @@ def f(k, b=4):
 # plt.plot(x, np.sin(x))
 # plt.show()
 
-interactive(f, k=True, b=(1, 4, 1))
+interactive(f, b=(1.2, 4.6, 0.1))

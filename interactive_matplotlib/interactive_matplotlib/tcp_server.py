@@ -46,7 +46,9 @@ class MyTCPServerHandler(SocketServer.BaseRequestHandler):
             argname = str(arg["name"])
             value = arg["value"]
             type = arg["type"]
-            if type == "WidgetInt":
+            if type == "WidgetFloat":
+                value = float(value)
+            elif type == "WidgetInt":
                 value = int(value)
             elif type == "WidgetBool":
                 value = True if value == "true" else False
