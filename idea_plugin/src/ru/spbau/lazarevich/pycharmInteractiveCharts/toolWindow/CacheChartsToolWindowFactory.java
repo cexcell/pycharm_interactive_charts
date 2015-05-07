@@ -93,14 +93,15 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
   private void sendWidgetInfo(JsonObject jsonObject) {
     Socket socket = null;
     try {
-      int ourPortNumber = 4000;
+      int portNumber = 4000;
+      int bufferSize = 1024;
       String ourHost = "localhost";
-      socket = new Socket(ourHost, ourPortNumber);
+      socket = new Socket(ourHost, portNumber);
       socket.getOutputStream().write(jsonObject.toString().getBytes());
-      byte[] buf = new byte[1024];
-      int r = socket.getInputStream().read(buf);
-      if (r != -1) {
-        String data = new String(buf, 0, r);
+      byte[] buf = new byte[bufferSize];
+      int totalRead = socket.getInputStream().read(buf);
+      if (totalRead != -1) {
+        String data = new String(buf, 0, totalRead);
         if (data.equals("OK")) {
           resizeAndDrawCurrentImage();
         }
@@ -181,7 +182,6 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
 
   private void clearImages() {
     myChartLabel.setIcon(null);
-    myWidgetManager.clear();
     myWidgetViewer.removeAll();
     ApplicationManager.getApplication().runWriteAction(new Runnable() {
       @Override
@@ -321,8 +321,16 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
         }
       });
     }
-    if (component instanceof JTextArea) {
-      //TODO: implement
+    if (component instanceof JTextField) {
+      JTextField widget = (JTextField)component;
+      widget.addActionListener(new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+          JTextField widget = (JTextField)e.getSource();
+          JsonObject jsonObject = CacheChartsToolWindowFactory.this.myWidgetManager.collectBasicJsonInfo(widget);
+          sendWidgetInfo(jsonObject);
+        }
+      });
     }
   }
 }

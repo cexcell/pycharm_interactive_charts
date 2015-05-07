@@ -3,6 +3,7 @@ package ru.spbau.lazarevich.pycharmInteractiveCharts.toolWindow;
 import com.google.gson.*;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.vfs.VirtualFile;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -11,11 +12,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Hashtable;
 
 public class WidgetManager {
   private static final Logger LOG = Logger.getInstance(CacheChartsToolWindowFactory.class.getName());
-  private static final int floatPrecise = 1000;
+  private static final int ourFloatPrecise = 1000;
+  public static final String WIDGET_FLOAT_TYPE = "WidgetFloat";
+  public static final String WIDGET_INT_TYPE = "WidgetInt";
+  public static final String WIDGET_TEXT_TYPE = "WidgetText";
+  public static final String WIDGET_BOOL_TYPE = "WidgetBool";
   private VirtualFile myDataDirectory;
   private int myCurrentFuncId;
   private ArrayList<Integer> myRelatedCharts = new ArrayList<Integer>();
@@ -26,16 +30,16 @@ public class WidgetManager {
 
   private static Component getWidgetToPanel(JsonObject widget) {
     String type = widget.get("widgetType").getAsString();
-    if (type.equals("WidgetFloat")) {
+    if (type.equals(WIDGET_FLOAT_TYPE)) {
       return getFloatWidget(widget);
     }
-    if (type.equals("WidgetInt")) {
+    if (type.equals(WIDGET_INT_TYPE)) {
       return getIntWidget(widget);
     }
-    else if (type.equals("WidgetText")) {
+    else if (type.equals(WIDGET_TEXT_TYPE)) {
       return getTextWidget(widget);
     }
-    else if (type.equals("WidgetBool")) {
+    else if (type.equals(WIDGET_BOOL_TYPE)) {
       return getBoolWidget(widget);
     }
     return null;
@@ -64,38 +68,29 @@ public class WidgetManager {
     return widget;
   }
 
-  private static Component getTextWidget(JsonObject widgetText) {
-    //TODO: implement this
-    return null;
-  }
-
-  private static JSlider getFloatWidget(JsonObject widgetFloat) {
-    float minf = widgetFloat.get("min").getAsFloat();
-    float maxf = widgetFloat.get("max").getAsFloat();
-    int min = Math.round(minf * floatPrecise) ;
-    int max = Math.round(maxf * floatPrecise);
-    // Ignore step for a better times
-    int step = Math.round(widgetFloat.get("step").getAsFloat() * floatPrecise);
-    float valuef = widgetFloat.get("value").getAsFloat();
-    int value = Math.round(valuef * floatPrecise);
-    final JSlider widget = new JSlider(SwingConstants.HORIZONTAL, min, max, value);
-    widget.setExtent(0);
-    widget.setName(widgetFloat.get("name").getAsString());
-    Hashtable<Integer, JLabel> table = new Hashtable<Integer, JLabel>();
-    table.put(0, new JLabel(String.valueOf(minf)));
-    table.put(50, new JLabel(String.valueOf(valuef)));
-    table.put(100, new JLabel(String.valueOf(maxf)));
-    widget.setLabelTable(table);
-    widget.setPaintLabels(true);
-    widget.setSnapToTicks(true);
-    //widget.setMajorTickSpacing(step);
-    //widget.setMinorTickSpacing(1);
-    //widget.setPaintLabels(true);
-    //widget.setPaintTicks(true);
+  private static Component getTextWidget(@NotNull JsonObject widgetText) {
+    String value = widgetText.get("value").getAsString();
+    final JTextField widget = new JTextField(value);
+    widget.setName(widgetText.get("name").getAsString());
     return widget;
   }
 
-  private static JSlider getIntWidget(JsonObject widgetInt) {
+  private static JSlider getFloatWidget(@NotNull JsonObject widgetFloat) {
+    float minf = widgetFloat.get("min").getAsFloat();
+    float maxf = widgetFloat.get("max").getAsFloat();
+    int min = Math.round(minf * ourFloatPrecise) ;
+    int max = Math.round(maxf * ourFloatPrecise);
+    // Ignore step for a better times
+    int step = Math.round(widgetFloat.get("step").getAsFloat() * ourFloatPrecise);
+    float valuef = widgetFloat.get("value").getAsFloat();
+    int value = Math.round(valuef * ourFloatPrecise);
+    final JSlider widget = new JSlider(SwingConstants.HORIZONTAL, min, max, value);
+    widget.setExtent(0);
+    widget.setName(widgetFloat.get("name").getAsString());
+    return widget;
+  }
+
+  private static JSlider getIntWidget(@NotNull JsonObject widgetInt) {
     int min = widgetInt.get("min").getAsInt();
     int max = widgetInt.get("max").getAsInt();
     int step = widgetInt.get("step").getAsInt();
@@ -120,7 +115,7 @@ public class WidgetManager {
     if (component instanceof JCheckBox) {
       return "WidgetBool";
     }
-    if (component instanceof JTextArea) {
+    if (component instanceof JTextField) {
       return "WidgetText";
     }
     return null;
@@ -130,15 +125,15 @@ public class WidgetManager {
     if (component instanceof JSlider) {
       if (isFloatSlider((JSlider)component)) {
         // I need this "trick" because swing has no built-in slider for float values
-        return String.valueOf((float) ((JSlider)component).getValue() / floatPrecise);
+        return String.valueOf((float) ((JSlider)component).getValue() / ourFloatPrecise);
       }
       return String.valueOf(((JSlider)component).getValue());
     }
     if (component instanceof JCheckBox) {
       return String.valueOf(((JCheckBox)component).isSelected());
     }
-    if (component instanceof JTextArea) {
-      return ((JTextArea)component).getText();
+    if (component instanceof JTextField) {
+      return ((JTextField)component).getText();
     }
     return null;
   }
@@ -217,9 +212,5 @@ public class WidgetManager {
     argJson.addProperty("value", getValue(widget));
     jsonObject.addProperty("arg", argJson.toString());
     return jsonObject;
-  }
-
-  public void clear() {
-    //TODO: add some logic here or delete method.
   }
 }
