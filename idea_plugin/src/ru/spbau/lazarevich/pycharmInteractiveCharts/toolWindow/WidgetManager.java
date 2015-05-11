@@ -108,15 +108,15 @@ public class WidgetManager {
   private static String getType(Component component) {
     if (component instanceof JSlider) {
       if (isFloatSlider((JSlider)component)) {
-        return "WidgetFloat";
+        return WIDGET_FLOAT_TYPE;
       }
-      return "WidgetInt";
+      return WIDGET_INT_TYPE;
     }
     if (component instanceof JCheckBox) {
-      return "WidgetBool";
+      return WIDGET_BOOL_TYPE;
     }
     if (component instanceof JTextField) {
-      return "WidgetText";
+      return WIDGET_TEXT_TYPE;
     }
     return null;
   }

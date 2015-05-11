@@ -25,6 +25,8 @@ import java.util.ArrayList;
 
 public class CacheChartsToolWindowFactory implements ToolWindowFactory {
   private static final String ourIdeaPath = ProjectCoreUtil.DIRECTORY_BASED_PROJECT_DIR;
+  private static final String ourHost = "localhost";
+  private static final int ourPort = 4000;
   private static final String ourChartsDir = "charts";
   private static final String ourDatExtension = "dat";
   private static final String ourChartExtension = "png";
@@ -38,6 +40,8 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
   private JPanel myChartViewer;
   private JLabel myChartLabel;
   private JPanel myWidgetViewer;
+  private JPanel innerCacheChartsToolWindowContent;
+  private JScrollPane chartsToolWindowCrollPane;
   private ToolWindow myCacheChartsToolWindow;
   private ChartsManager myChartsManager;
   private WidgetManager myWidgetManager;
@@ -91,12 +95,11 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
   }
 
   private void sendWidgetInfo(JsonObject jsonObject) {
+    jsonObject.addProperty("cmd", "update");
     Socket socket = null;
     try {
-      int portNumber = 4000;
       int bufferSize = 1024;
-      String ourHost = "localhost";
-      socket = new Socket(ourHost, portNumber);
+      socket = new Socket(ourHost, ourPort);
       socket.getOutputStream().write(jsonObject.toString().getBytes());
       byte[] buf = new byte[bufferSize];
       int totalRead = socket.getInputStream().read(buf);
@@ -204,9 +207,26 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
         }
       }
     });
+    sendFinishCmd();
   }
 
-  @Override
+  private void sendFinishCmd() {
+    Socket socket = null;
+    try {
+      socket = new Socket(ourHost, ourPort);
+      JsonObject jsonObject = new JsonObject();
+      jsonObject.addProperty("cmd", "finish");
+      socket.getOutputStream().write(jsonObject.toString().getBytes());
+    }
+    catch (IOException e) {
+      // nothing bad happens here. If socket is already closed then we just return.
+      return;
+    } finally {
+      WidgetManager.closeSocket(socket);
+    }
+  }
+
+    @Override
   public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
     myCacheChartsToolWindow = toolWindow;
     this.initializeDirectory(project);
