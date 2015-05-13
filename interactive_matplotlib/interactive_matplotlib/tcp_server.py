@@ -1,6 +1,6 @@
 import os
+import sys
 
-__author__ = 'cexcell'
 import SocketServer
 import json
 from params import NAME_PREFIX, CHART_EXT, INFO_EXT
@@ -37,28 +37,34 @@ def remove_and_rewrite(chart_id, name, value):
 
 
 class MyTCPServerHandler(SocketServer.BaseRequestHandler):
+    def update_charts(self, data):
+        func_id = data["funcId"]
+        arg = json.loads(data["arg"])
+        related_charts = tuple(map(int, str(data["relatedCharts"][1:-1]).split(',')))
+        argname = str(arg["name"])
+        value = arg["value"]
+        type = arg["type"]
+        if type == "WidgetFloat":
+            value = float(value)
+        elif type == "WidgetInt":
+            value = int(value)
+        elif type == "WidgetBool":
+            value = True if value == "true" else False
+        else:
+            value = str(value)
+        for chart in related_charts:
+            remove_and_rewrite(chart, argname, value)
+        func, args = functions_[func_id]
+        args[argname] = value
+        func(**args)
+        self.request.send("OK")
+
     def handle(self):
         try:
             data = json.loads(self.request.recv(1024).strip())
-            func_id = data["funcId"]
-            arg = json.loads(data["arg"])
-            related_charts = tuple(map(int, str(data["relatedCharts"][1:-1]).split(',')))
-            argname = str(arg["name"])
-            value = arg["value"]
-            type = arg["type"]
-            if type == "WidgetFloat":
-                value = float(value)
-            elif type == "WidgetInt":
-                value = int(value)
-            elif type == "WidgetBool":
-                value = True if value == "true" else False
-            else:
-                value = str(value)
-            for chart in related_charts:
-                remove_and_rewrite(chart, argname, value)
-            func, args = functions_[func_id]
-            args[argname] = value
-            func(**args)
-            self.request.send("OK")
+            if (data["cmd"] == "update"):
+                self.update_charts(data)
+            if (data["cmd"] == "finish"):
+                self.server.shutdown()
         except Exception, e:
             print "Exception wile receiving message: ", e
