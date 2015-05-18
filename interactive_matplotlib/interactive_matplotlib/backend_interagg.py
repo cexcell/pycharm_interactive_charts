@@ -36,7 +36,7 @@ class Show(ShowBase):
             manager.show(**kwargs)
 
     def mainloop(self):
-        print "In da mainloop"
+        pass
 
 
 show = Show()
@@ -64,12 +64,15 @@ class FigureCanvasInterAgg(FigureCanvasAgg):
         return 'png'
 
     def show(self, chart_num):
+        print "drawing " + str(chart_num)
         FigureCanvasAgg.print_png(self, NAME_PREFIX + str(chart_num) + CHART_EXT)
 
 
 def get_last_missing_chart_index():
     datas = check_directory_datas(CHART_DIR)
     charts = check_directory_charts(CHART_DIR)
+    datas.sort()
+    charts.sort()
     for i, data in enumerate(datas):
         fname = data[:-4] + CHART_EXT
         if fname not in charts:

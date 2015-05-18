@@ -17,54 +17,69 @@ class MyTCPServer(SocketServer.ThreadingTCPServer):
     allow_reuse_address = True
 
 
-def remove_and_rewrite(chart_id, name, value):
+def remove_chart(chart_id):
     chart = NAME_PREFIX + str(chart_id) + CHART_EXT
+    os.remove(chart)
+
+
+def rewrite(chart_id, name, value):
     dat = NAME_PREFIX + str(chart_id) + INFO_EXT
-    if (os.path.isfile(dat)):
+    if os.path.isfile(dat):
         data_file = open(dat, "r")
         json_data = json.load(data_file)
         widgets_n = int(json_data["widgetsNumber"])
         for i in range(widgets_n):
             widget = json_data["widget" + str(i)]
-            if (name == widget["name"]):
+            if name == widget["name"]:
                 widget["value"] = value
                 json_data["widget" + str(i)] = widget
         data_file.close()
+        print "refreshing: " + str(chart_id)
         data_file = open(dat, "w")
         data_file.write(json.dumps(json_data))
         data_file.close()
-    os.remove(chart)
 
 
 class MyTCPServerHandler(SocketServer.BaseRequestHandler):
-    def update_charts(self, data):
+    def update_charts(self, data, is_rewrite=False):
         func_id = data["funcId"]
-        arg = json.loads(data["arg"])
-        related_charts = tuple(map(int, str(data["relatedCharts"][1:-1]).split(',')))
-        argname = str(arg["name"])
-        value = arg["value"]
-        type = arg["type"]
-        if type == "WidgetFloat":
-            value = float(value)
-        elif type == "WidgetInt":
-            value = int(value)
-        elif type == "WidgetBool":
-            value = True if value == "true" else False
-        else:
-            value = str(value)
-        for chart in related_charts:
-            remove_and_rewrite(chart, argname, value)
+        arg_n = data["argN"]
         func, args = functions_[func_id]
-        args[argname] = value
+        related_charts = tuple(map(int, str(data["relatedCharts"][1:-1]).split(',')))
+        for i in range(arg_n):
+            arg = json.loads(data["arg" + str(i)])
+            argname = str(arg["name"])
+            value = arg["value"]
+            type = arg["type"]
+            if type == "WidgetFloat":
+                value = float(value)
+            elif type == "WidgetInt":
+                value = int(value)
+            elif type == "WidgetBool":
+                value = True if value == "true" else False
+            else:
+                value = str(value)
+            if is_rewrite:
+                for chart in related_charts:
+                    rewrite(chart, argname, value)
+            args[argname] = value
+        for chart in related_charts:
+            print "removing " + str(chart)
+            remove_chart(chart)
         func(**args)
         self.request.send("OK")
 
     def handle(self):
         try:
             data = json.loads(self.request.recv(1024).strip())
-            if (data["cmd"] == "update"):
+            if data["cmd"] == "update":
+                print "updating"
                 self.update_charts(data)
-            if (data["cmd"] == "finish"):
+            if data["cmd"] == "finish":
+                print "finishing"
                 self.server.shutdown()
+            if data["cmd"] == "rewrite":
+                print "rewriting"
+                self.update_charts(data, True)
         except Exception, e:
             print "Exception wile receiving message: ", e
