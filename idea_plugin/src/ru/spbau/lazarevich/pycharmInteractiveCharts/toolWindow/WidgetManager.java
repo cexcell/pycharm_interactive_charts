@@ -20,6 +20,7 @@ public class WidgetManager {
   public static final String WIDGET_INT_TYPE = "WidgetInt";
   public static final String WIDGET_TEXT_TYPE = "WidgetText";
   public static final String WIDGET_BOOL_TYPE = "WidgetBool";
+  public static final String ARG_N = "argN";
   private VirtualFile myDataDirectory;
   private int myCurrentFuncId;
   private ArrayList<Integer> myRelatedCharts = new ArrayList<Integer>();
@@ -202,15 +203,28 @@ public class WidgetManager {
   }
 
   public JsonObject collectBasicJsonInfo(Component widget) {
+    JsonObject jsonObject = collectFunctionInfo();
+    JsonObject argJson = collectWidgetInfo(widget);
+    jsonObject.addProperty(ARG_N, 1);
+    jsonObject.addProperty("arg0", argJson.toString());
+    return jsonObject;
+  }
+
+  @NotNull
+  public JsonObject collectFunctionInfo() {
     JsonObject jsonObject = new JsonObject();
     Gson gson = new Gson();
     jsonObject.addProperty("funcId", myCurrentFuncId);
     jsonObject.addProperty("relatedCharts", gson.toJson(myRelatedCharts));
+    return jsonObject;
+  }
+
+  @NotNull
+  public JsonObject collectWidgetInfo(Component widget) {
     JsonObject argJson = new JsonObject();
     argJson.addProperty("type", getType(widget));
     argJson.addProperty("name", widget.getName());
     argJson.addProperty("value", getValue(widget));
-    jsonObject.addProperty("arg", argJson.toString());
-    return jsonObject;
+    return argJson;
   }
 }

@@ -94,8 +94,8 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
       new BoxLayout(myWidgetViewer, BoxLayout.Y_AXIS));
   }
 
-  private void sendWidgetInfo(JsonObject jsonObject) {
-    jsonObject.addProperty("cmd", "update");
+  private void sendWidgetInfo(JsonObject jsonObject, String cmd) {
+    jsonObject.addProperty("cmd", cmd);
     Socket socket = null;
     try {
       int bufferSize = 1024;
@@ -119,6 +119,10 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     }
   }
 
+  private void sendWidgetInfo(JsonObject jsonObject) {
+    sendWidgetInfo(jsonObject, "update");
+  }
+
   private void renderWidgets() throws IOException {
     if (!myChartsManager.isAvailable()) {
       return;
@@ -132,7 +136,7 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     for (Component widget : widgets) {
       JLabel componentLabel = new JLabel(widget.getName(), SwingConstants.CENTER);
       myWidgetViewer.add(componentLabel);
-      setListner(widget);
+      setListener(widget);
       myWidgetViewer.add(widget);
       myWidgetViewer.add(Box.createVerticalStrut(verticalMargin));
       myWidgetViewer.revalidate();
@@ -163,9 +167,11 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     myChartsManager.setScale(newWidth);
   }
 
-  private void drawNextImage() {
+  private void draw(boolean next) {
     try {
-      setIcon(myChartsManager.drawNext());
+      setIcon(next ? myChartsManager.drawNext() : myChartsManager.drawPrev());
+      JsonObject jsonObject = collectAllWidgetsInfo();
+      sendWidgetInfo(jsonObject, "rewrite");
       renderWidgets();
     }
     catch (IOException e) {
@@ -173,14 +179,24 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     }
   }
 
+  private JsonObject collectAllWidgetsInfo() throws IOException {
+    JsonObject jsonObject = myWidgetManager.collectFunctionInfo();
+    String argPrefix = "arg";
+    ArrayList<Component> widgets = myWidgetManager.renderWidgets(myChartsManager.getCurrentImageIndex());
+    jsonObject.addProperty(WidgetManager.ARG_N, widgets.size());
+    for (int i = 0; i < widgets.size(); i++) {
+      JsonObject arg = myWidgetManager.collectWidgetInfo(widgets.get(i));
+      jsonObject.addProperty(argPrefix + String.valueOf(i), arg.toString());
+    }
+    return jsonObject;
+  }
+
+  private void drawNextImage() {
+    draw(true);
+  }
+
   private void drawPrevImage() {
-    try {
-      setIcon(myChartsManager.drawPrev());
-      renderWidgets();
-    }
-    catch (IOException e) {
-      LOG.warn(ourMissingDirectoryExceptionMessage + e.getMessage());
-    }
+    draw(false);
   }
 
   private void clearImages() {
@@ -210,7 +226,7 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     sendFinishCmd();
   }
 
-  private void sendFinishCmd() {
+  private static void sendFinishCmd() {
     Socket socket = null;
     try {
       socket = new Socket(ourHost, ourPort);
@@ -220,13 +236,13 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     }
     catch (IOException e) {
       // nothing bad happens here. If socket is already closed then we just return.
-      return;
-    } finally {
+    }
+    finally {
       WidgetManager.closeSocket(socket);
     }
   }
 
-    @Override
+  @Override
   public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
     myCacheChartsToolWindow = toolWindow;
     this.initializeDirectory(project);
@@ -249,10 +265,10 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     catch (IOException e) {
       LOG.error(ourReadingErrorFromDirectoryExceptionMessage + e.getMessage());
     }
-    setListner();
+    setListener();
   }
 
-  private void setListner() {
+  private void setListener() {
     VirtualFileManager.getInstance().addVirtualFileListener(new VirtualFileListener() {
       @Override
       public void propertyChanged(@NotNull VirtualFilePropertyEvent event) {
@@ -316,7 +332,7 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     });
   }
 
-  private void setListner(Component component) {
+  private void setListener(Component component) {
     if (component instanceof JSlider) {
       JSlider widget = (JSlider)component;
       widget.addChangeListener(new ChangeListener() {
