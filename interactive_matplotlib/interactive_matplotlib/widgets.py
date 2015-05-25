@@ -1,4 +1,3 @@
-__author__ = 'cexcell'
 from tcp_server import add_function, MyTCPServer, MyTCPServerHandler
 from abc import abstractmethod
 import socket
@@ -137,8 +136,12 @@ def interactive(func, **kwargs):
         sock.connect((HOST, PORT + 10000))
         sock.send('OK')
     except Exception, _:
-        #nothing bad. It just means, that our tool window doesn't run yet
+        # nothing bad. It just means, that our tool window doesn't run yet
         pass
     add_function(id, (func, default_values_dict))
-    server = MyTCPServer((HOST, PORT), MyTCPServerHandler)
-    server.serve_forever()
+    try:
+        server = MyTCPServer((HOST, PORT), MyTCPServerHandler)
+        server.serve_forever()
+    except Exception, _:
+        # nothing bad. Just server has already run. Suppress this exception
+        pass

@@ -149,8 +149,8 @@ public class WidgetManager {
         socket.close();
       }
       catch (IOException e) {
-        String ourCannotCloseSocketExceptionMessage = "Cannot close socket: ";
-        LOG.warn(ourCannotCloseSocketExceptionMessage + e.getMessage());
+        String cannotCloseSocketExceptionMessage = "Cannot close socket: ";
+        LOG.warn(cannotCloseSocketExceptionMessage + e.getMessage());
       }
     }
   }
