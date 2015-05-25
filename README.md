@@ -62,7 +62,7 @@ Simple enough. Now, you can just drag the slider, that represents `i` parameter 
 
 ![Interactive-1-2](http://drive.google.com/uc?export=view&id=0B6IyJYTLLzzbT05raTZVNnVZSFU)
 
-To end interactive session, just press refresh button.
+To end interactive session or go to next one, just press refresh button.
 
 ## Advanced
 
