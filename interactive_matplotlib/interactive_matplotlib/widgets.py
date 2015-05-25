@@ -1,6 +1,7 @@
 __author__ = 'cexcell'
 from tcp_server import add_function, MyTCPServer, MyTCPServerHandler
 from abc import abstractmethod
+import socket
 from utils import check_directory_charts
 from params import CHART_DIR, HOST, PORT
 import json
@@ -131,6 +132,13 @@ def interactive(func, **kwargs):
     id = len(modified_charts_name_list)
     charts_created = id - len(orig_charts_name_list)
     write_widgets_info(id - charts_created, id, widgets)
+    try:
+        sock = socket.socket()
+        sock.connect((HOST, PORT + 10000))
+        sock.send('OK')
+    except Exception, _:
+        #nothing bad. It just means, that our tool window doesn't run yet
+        pass
     add_function(id, (func, default_values_dict))
     server = MyTCPServer((HOST, PORT), MyTCPServerHandler)
     server.serve_forever()
