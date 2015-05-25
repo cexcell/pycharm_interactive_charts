@@ -22,7 +22,7 @@ def remove_chart(chart_id):
     os.remove(chart)
 
 
-def rewrite(chart_id, name, value):
+def rewrite(chart_id, values):
     dat = NAME_PREFIX + str(chart_id) + INFO_EXT
     if os.path.isfile(dat):
         data_file = open(dat, "r")
@@ -30,11 +30,10 @@ def rewrite(chart_id, name, value):
         widgets_n = int(json_data["widgetsNumber"])
         for i in range(widgets_n):
             widget = json_data["widget" + str(i)]
-            if name == widget["name"]:
-                widget["value"] = value
-                json_data["widget" + str(i)] = widget
+            widget["value"] = values[widget["name"]]
+            json_data["widget" + str(i)] = widget
+        # print json_data
         data_file.close()
-        print "refreshing: " + str(chart_id)
         data_file = open(dat, "w")
         data_file.write(json.dumps(json_data))
         data_file.close()
@@ -43,9 +42,9 @@ def rewrite(chart_id, name, value):
 class MyTCPServerHandler(SocketServer.BaseRequestHandler):
     def update_charts(self, data, is_rewrite=False):
         func_id = data["funcId"]
-        arg_n = data["argN"]
         func, args = functions_[func_id]
         related_charts = tuple(map(int, str(data["relatedCharts"][1:-1]).split(',')))
+        arg_n = data["argN"]
         for i in range(arg_n):
             arg = json.loads(data["arg" + str(i)])
             argname = str(arg["name"])
@@ -59,27 +58,32 @@ class MyTCPServerHandler(SocketServer.BaseRequestHandler):
                 value = True if value == "true" else False
             else:
                 value = str(value)
-            if is_rewrite:
-                for chart in related_charts:
-                    rewrite(chart, argname, value)
             args[argname] = value
-        for chart in related_charts:
-            print "removing " + str(chart)
-            remove_chart(chart)
-        func(**args)
+        # print args
+        if is_rewrite:
+            for chart in related_charts:
+                # print "refreshing: " + str(chart)
+                rewrite(chart, args)
+        if not is_rewrite:
+            for chart in related_charts:
+                # print "removing " + str(chart)
+                remove_chart(chart)
+        if not is_rewrite:
+            func(**args)
+            functions_[func_id] = (func, args)
         self.request.send("OK")
 
     def handle(self):
         try:
             data = json.loads(self.request.recv(1024).strip())
             if data["cmd"] == "update":
-                print "updating"
+                # print "updating"
                 self.update_charts(data)
             if data["cmd"] == "finish":
-                print "finishing"
+                # print "finishing"
                 self.server.shutdown()
             if data["cmd"] == "rewrite":
-                print "rewriting"
+                # print "rewriting"
                 self.update_charts(data, True)
         except Exception, e:
             print "Exception wile receiving message: ", e

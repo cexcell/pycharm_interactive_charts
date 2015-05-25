@@ -5,4 +5,4 @@ CHART_DIR = ".idea/charts"
 INFO_EXT = ".dat"
 CHART_EXT = ".png"
 HOST = 'localhost'
-PORT = 4000
+PORT = 40000

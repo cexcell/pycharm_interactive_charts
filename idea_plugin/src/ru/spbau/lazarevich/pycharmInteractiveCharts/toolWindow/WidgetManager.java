@@ -178,9 +178,6 @@ public class WidgetManager {
   }
 
   public ArrayList<Component> renderWidgets(int imageIndex) throws IOException {
-    //if (!isHostAvailable()) {
-    //  return null;
-    //}
     VirtualFile widgetDataFile = myDataDirectory.findChild(composeName(imageIndex));
     if (widgetDataFile != null) {
       String jsonString = getJsonStringFromStream(widgetDataFile);

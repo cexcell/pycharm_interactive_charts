@@ -20,18 +20,25 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 
 public class CacheChartsToolWindowFactory implements ToolWindowFactory {
   private static final String ourIdeaPath = ProjectCoreUtil.DIRECTORY_BASED_PROJECT_DIR;
   private static final String ourHost = "localhost";
-  private static final int ourPort = 4000;
+  private static final int ourPort = 40000;
+  private static final int bufferSize = 1024;
   private static final String ourChartsDir = "charts";
   private static final String ourDatExtension = "dat";
   private static final String ourChartExtension = "png";
   private static final String ourMissingDirectoryExceptionMessage = "Cannot read from charts directory: ";
   private static final String ourReadingErrorFromDirectoryExceptionMessage = "IO error occurred during directory initialization: ";
+  private static final String ourSocketErrorExceptionMessage = "Cannot get information via socket: ";
+  private static final String ourInterruptedExceptionMessage = "Synchronization was interrupter: ";
+  private static final String ourInvocationExceptionMessage = "Cannot invoke sync: ";
   private static final Logger LOG = Logger.getInstance(CacheChartsToolWindowFactory.class.getName());
   private JButton myPreviousImageButton;
   private JButton myNextImageButton;
@@ -94,13 +101,28 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
       new BoxLayout(myWidgetViewer, BoxLayout.Y_AXIS));
   }
 
+  private static void sendFinishCmd() {
+    Socket socket = null;
+    try {
+      socket = new Socket(ourHost, ourPort);
+      JsonObject jsonObject = new JsonObject();
+      jsonObject.addProperty("cmd", "finish");
+      socket.getOutputStream().write(jsonObject.toString().getBytes(Charset.defaultCharset()));
+    }
+    catch (IOException e) {
+      // nothing bad happens here. If socket is already closed then we just return.
+    }
+    finally {
+      WidgetManager.closeSocket(socket);
+    }
+  }
+
   private void sendWidgetInfo(JsonObject jsonObject, String cmd) {
     jsonObject.addProperty("cmd", cmd);
     Socket socket = null;
     try {
-      int bufferSize = 1024;
       socket = new Socket(ourHost, ourPort);
-      socket.getOutputStream().write(jsonObject.toString().getBytes());
+      socket.getOutputStream().write(jsonObject.toString().getBytes(Charset.defaultCharset()));
       byte[] buf = new byte[bufferSize];
       int totalRead = socket.getInputStream().read(buf);
       if (totalRead != -1) {
@@ -148,7 +170,6 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     recalculateImageScale();
     try {
       setIcon(myChartsManager.redrawCurrentImage());
-      //renderWidgets();
     }
     catch (IOException e) {
       LOG.warn(ourMissingDirectoryExceptionMessage + e.getMessage());
@@ -169,9 +190,10 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
 
   private void draw(boolean next) {
     try {
-      setIcon(next ? myChartsManager.drawNext() : myChartsManager.drawPrev());
       JsonObject jsonObject = collectAllWidgetsInfo();
       sendWidgetInfo(jsonObject, "rewrite");
+      setIcon(next ? myChartsManager.drawNext() : myChartsManager.drawPrev());
+      VirtualFileManager.getInstance().syncRefresh();
       renderWidgets();
     }
     catch (IOException e) {
@@ -181,13 +203,8 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
 
   private JsonObject collectAllWidgetsInfo() throws IOException {
     JsonObject jsonObject = myWidgetManager.collectFunctionInfo();
-    String argPrefix = "arg";
-    ArrayList<Component> widgets = myWidgetManager.renderWidgets(myChartsManager.getCurrentImageIndex());
-    jsonObject.addProperty(WidgetManager.ARG_N, widgets.size());
-    for (int i = 0; i < widgets.size(); i++) {
-      JsonObject arg = myWidgetManager.collectWidgetInfo(widgets.get(i));
-      jsonObject.addProperty(argPrefix + String.valueOf(i), arg.toString());
-    }
+    // Crutch here
+    jsonObject.addProperty(WidgetManager.ARG_N, 0);
     return jsonObject;
   }
 
@@ -226,28 +243,10 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     sendFinishCmd();
   }
 
-  private static void sendFinishCmd() {
-    Socket socket = null;
-    try {
-      socket = new Socket(ourHost, ourPort);
-      JsonObject jsonObject = new JsonObject();
-      jsonObject.addProperty("cmd", "finish");
-      socket.getOutputStream().write(jsonObject.toString().getBytes());
-    }
-    catch (IOException e) {
-      // nothing bad happens here. If socket is already closed then we just return.
-    }
-    finally {
-      WidgetManager.closeSocket(socket);
-    }
-  }
-
   @Override
   public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
     myCacheChartsToolWindow = toolWindow;
     this.initializeDirectory(project);
-    myChartsManager.initializeChartFiles();
-    //resizeAndDrawCurrentImage();
     final ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
     Content content = contentFactory.createContent(myCacheChartsToolWindowContent, "", false);
     toolWindow.getContentManager().addContent(content);
@@ -265,10 +264,73 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
     catch (IOException e) {
       LOG.error(ourReadingErrorFromDirectoryExceptionMessage + e.getMessage());
     }
+    myChartsManager.initializeChartFiles();
     setListener();
   }
 
   private void setListener() {
+    setDirectoryListener();
+    new Thread(new Runnable() {
+      @Override
+      public void run() {
+        ServerSocket serverSocket = null;
+        try {
+          serverSocket = new ServerSocket(ourPort + 10000);
+          while (true) {
+            Socket fromClient = null;
+            try {
+              fromClient = serverSocket.accept();
+              byte[] buf = new byte[bufferSize];
+              int totalRead = fromClient.getInputStream().read(buf);
+              if (totalRead != -1) {
+                String data = new String(buf, 0, totalRead);
+                if (data.equals("OK")) {
+                  syncFiles();
+                }
+              }
+            }
+            catch (IOException e) {
+              LOG.warn(ourSocketErrorExceptionMessage + e.getMessage());
+              return;
+            }
+            catch (InterruptedException e) {
+              LOG.warn(ourInterruptedExceptionMessage + e.getMessage());
+            }
+            catch (InvocationTargetException e) {
+              LOG.warn(ourInvocationExceptionMessage + e.getMessage());
+            }
+            finally {
+              WidgetManager.closeSocket(fromClient);
+            }
+          }
+        }
+        catch (IOException e) {
+          LOG.warn("Cannot open socket server or accept connection: " + e.getMessage());
+        }
+        finally {
+          if (serverSocket != null) {
+            try {
+              serverSocket.close();
+            }
+            catch (IOException e) {
+              LOG.warn("Error occurred during server closing");
+            }
+          }
+        }
+      }
+    }).start();
+  }
+
+  private static void syncFiles() throws InterruptedException, InvocationTargetException {
+    SwingUtilities.invokeAndWait(new Runnable() {
+      @Override
+      public void run() {
+        VirtualFileManager.getInstance().syncRefresh();
+      }
+    });
+  }
+
+  private void setDirectoryListener() {
     VirtualFileManager.getInstance().addVirtualFileListener(new VirtualFileListener() {
       @Override
       public void propertyChanged(@NotNull VirtualFilePropertyEvent event) {
@@ -276,7 +338,6 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
 
       @Override
       public void contentsChanged(@NotNull VirtualFileEvent event) {
-        myChartsManager.initializeChartFiles();
       }
 
       @Override
@@ -303,11 +364,6 @@ public class CacheChartsToolWindowFactory implements ToolWindowFactory {
 
       @Override
       public void fileDeleted(@NotNull VirtualFileEvent event) {
-        VirtualFile file = event.getFile();
-        String ext = file.getExtension();
-        if (ext != null && ext.equals(ourChartExtension)) {
-          setIcon(null);
-        }
       }
 
       @Override
