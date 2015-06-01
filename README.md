@@ -1,9 +1,9 @@
-Pycharm interactive charts is a plugin for PyCharm IDE that allows to use interactie features of matplotlib.
+Pycharm interactive charts is a plugin for PyCharm IDE that allows to use interactive features of matplotlib.
 
 Here's a description of how to use this plugin
 
 ## Basic
-For example, you have a foo function that draw some function's chart, for example, sinus.
+For example, you have a foo function that draws some function's chart, for example, sinus.
 
 ```Python
 from matplotlib import pylab as plt
@@ -22,7 +22,7 @@ You will see something like that:
 ![Non -interactive](http://drive.google.com/uc?export=view&id=0B6IyJYTLLzzbNGVOb2k2am9UNzA)
 
 But if you decide that you want not only `sin(x)` function, but `sin(2*x)`, `sin(3*x)` and so on.
-Of course, you can do make this kind of code
+Of course, you can make this kind of code
 
 ```Python
 from matplotlib import pylab as plt
@@ -38,9 +38,9 @@ if __name__ == "__main__":
         foo(i)
 ```
 
-But that's quite ugly, doesn't it? You will see all 9 images of `sin(i*x)` function, but only one at a time and after you close it, it will have never been shown again. Also, you can stack all this charts into figure, but that need some skill :-)
+But that's quite ugly, isn't it? You will see all 9 images of `sin(i*x)` function, but only one at a time and after you close it, it will have never been shown again. Also, you can stack all this charts into figure, but that need some skill :-)
 
-With this plugin, it can be done in more elegant way
+It can be done in more elegant way with this plugin
 
 ```Python
 from interactive_matplotlib import interactive
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     interactive(foo, i=(1,10))
 ```
 
-Simple enough. Now, you can just drag the slider, that represents `i` parameter and see how your sinus function chart changes as you change your parameter, like on pictures below:
+Simple enough. Now you can just drag the slider, that represents `i` parameter and see how your sinus function chart changes as you change your parameter like on pictures below:
 
 ![Interactive-1-1](http://drive.google.com/uc?export=view&id=0B6IyJYTLLzzbdWlIVHo3bUdkMnc)
 
